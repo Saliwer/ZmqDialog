@@ -1,0 +1,9 @@
+#!/bin/bash
+
+make
+
+INCLUDES="-I. -I./include -I/usr/include"
+LIBS="-lzmq -L./lib -lZmqDlg -lreadline"
+
+g++ -std=c++11 -o server DlgServer.cpp $INCLUDES $LIBS
+
