@@ -4,7 +4,7 @@
 namespace ZmqDialog
 {
 
-  extern volatile bool IS_INTERRUPTED;
+   volatile bool IS_INTERRUPTED;
 
 };
 

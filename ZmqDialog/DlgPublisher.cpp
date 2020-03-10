@@ -5,14 +5,23 @@
 #include <readline/history.h>
 #include <sys/time.h>
 
+
 #include <zmq.hpp>
 
 #include "DlgServer.h"
+#include "DlgPublisher.h"
 #include "Config.h"
 #include "Debug.h"
 #include "ZmqDialog.h"
+#include "DlgMessage.h"
+#include "Exception.h"
 
-using namespace std;
+#include <ctime>
+
+
+#include <random>
+
+
 using namespace ZmqDialog;
 
 void USAGE(int argc, char* argv[])
@@ -24,8 +33,6 @@ void USAGE(int argc, char* argv[])
   printf("    -s          - silent mode (minimum printout)\n");
 }
 
-static const char* history_file_name = ".server.history";
-
 int main(int argc, char* argv[])
 {
   DLG_DEBUG_LEVEL = DBG_LEVEL_DEFAULT;
@@ -35,6 +42,7 @@ int main(int argc, char* argv[])
       return 1;
     }
   int c = 0;
+
   while((c = getopt(argc,argv,"vsd")) != -1)
     {
       switch (c)
@@ -54,24 +62,59 @@ int main(int argc, char* argv[])
 	  USAGE(argc,argv);
 	  return 1;
 	}
-    }
-  Print(DBG_LEVEL_DEBUG, "Dlg Server is starting with option '%s'...\n",argv[1]);
-  DlgServer server;
-  server.Start();
-  read_history(history_file_name);
-  char* line = NULL;
-  while((line = readline("server> ")) != NULL)
+    }  
+
+
+  DlgPublisher Publisher("Publisher #1", "SomeService");
+  if (!Publisher.Register())
     {
-      add_history(line);
+      Print(DBG_LEVEL_ERROR,"Couldn't register publisher.\n");
+    }
+
+  
+  char* line = NULL;
+
+  
+  while((line = readline("Publisher> ")) != NULL)
+    {
       if(strncmp(line,"exit",4) == 0 || strncmp(line,"quit",4) == 0)
 	{
-	  server.Stop();
 	  Print(DBG_LEVEL_DEBUG,"Command \'%s\' is received.\n",line);
 	  break;
 	}
+      if (strncmp(line, "publish", 7) == 0)
+	{
+	  for(size_t i = 0; i < 1000; ++i)
+	    {
+	      DlgMessage msg;
+	      if (!msg.SetMessageType(PUBLISH_BINARY_MESSAGE))
+		{
+		  Print(DBG_LEVEL_ERROR,"Couldn't set message type.\n");
+		  continue;
+		}
+	      timeval current_time;
+	      if (gettimeofday(&current_time, NULL) != 0)
+		{
+		  Print(DBG_LEVEL_DEBUG, "Get time of day error\n");
+		  continue;
+		}
+	      	
+	      if (!msg.SetMessageBuffer(&current_time, sizeof(current_time)))
+		{
+		  Print(DBG_LEVEL_ERROR,"Couldn't set message body.\n");
+		  continue;
+		}
+	      if (!Publisher.PublishMessage(&msg))
+		{
+		  Print(DBG_LEVEL_ERROR,"Couldn't publish message.\n");
+		  continue;
+		}
+	       usleep(1000);
+	    }	  
+	}
       free(line);
     }
-  write_history(history_file_name);
-  Print(DBG_LEVEL_DEBUG,"End of program.\n");
+  
+  Print(DBG_LEVEL_DEBUG,"End of program.\n");  
   return 0;
 }
