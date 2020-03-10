@@ -29,13 +29,9 @@ void USAGE(int argc, char* argv[])
 
 
 static bool thread_run = false;
-void some_loop(void*);
+const char *server_name = "192.168.100.13:55550";
 
-struct MyStruct
-{
-  size_t number;
-  timeval time;
-};
+void some_loop(void*);
 
 
 int main(int argc, char* argv[])
@@ -72,9 +68,13 @@ int main(int argc, char* argv[])
   Print(DBG_LEVEL_DEBUG, "Dlg Subscriber is starting with option '%s'...\n",argv[1]);
 
   DlgSubscriber tempSub("Subscriber #1", "SomeService");
-  if (!tempSub.Connect())
+  if (!tempSub.Connect(server_name))
     {
       Print(DBG_LEVEL_ERROR,"Couldn't connect to server.\n");
+    }
+  if (!tempSub.Subscribe())
+    {
+      Print(DBG_LEVEL_ERROR,"Couldn't subscribe to server.\n");
     }
   thread_run = true;
 
@@ -112,13 +112,18 @@ void some_loop(void *param)
 	      continue;
 	    }
 
+	  timeval* receive_time = nullptr;
 	  void *buf = nullptr;
 	  size_t size = 0;
 	  if (msg->GetMessageBuffer(buf, size))
 	    {
 	      Print(DBG_LEVEL_DEBUG, "Binary message received with size %u.\n", size);
 	      buf = operator new(size);
-	      if (!msg->GetMessageBuffer(buf, size))
+	      if (msg->GetMessageBuffer(buf, size))
+		{
+		  receive_time = static_cast<timeval*>(buf);
+		}
+	      else
 		{
 		  Print(DBG_LEVEL_DEBUG, "Couldn't get binary data.\n");
 		  operator delete(buf);
@@ -130,18 +135,16 @@ void some_loop(void *param)
 	      Print(DBG_LEVEL_DEBUG, "Couldn't get binary message.\n");
 	      continue;
 	    }
-	  MyStruct* start_time = static_cast<MyStruct*>(buf);
-	  MyStruct receive_time;
-	  if (gettimeofday(&receive_time.time, NULL) != 0)
+	 timeval current_time;
+	  if (gettimeofday(&current_time, NULL) != 0)
 	    {
 	      Print(DBG_LEVEL_DEBUG, "Get time of day error\n");
 	      operator delete(buf);
 	      continue;
 	    }
 	  timeval res;
-	  timersub(&receive_time.time, &start_time->time, &res);
-	  Print(DBG_LEVEL_DEBUG,"Message#%lu Time elapsed: %lus   %luus\n", start_time->number, 
-	        res.tv_sec, res.tv_usec);
+	  timersub(&current_time, receive_time, &res);
+	  Print(DBG_LEVEL_DEBUG,"Time elapsed: %lus   %luus\n", res.tv_sec, res.tv_usec);
 	  operator delete(buf);
 	}
     } 
