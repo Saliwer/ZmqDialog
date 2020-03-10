@@ -15,6 +15,7 @@ namespace ZmqDialog {
   protected:
     typedef std::vector<uint8_t> byte_array_t;
     std::vector<byte_array_t> m_data;
+    std::vector<uint8_t> m_identity; 
   public:
     message_array_t() {};
     message_array_t(const char* str);
@@ -43,7 +44,7 @@ namespace ZmqDialog {
 
   class DlgMessage : protected message_array_t
   {
-    const int N_FIELDS = 5;
+    const size_t N_FIELDS = 5;
   public:
     DlgMessage();
     DlgMessage(const std::string& name, const std::string& from, const std::string& to, 
@@ -56,6 +57,7 @@ namespace ZmqDialog {
     bool GetMessageType(uint32_t& msgType);
     bool GetMessageBody(std::string& body);
     bool GetMessageBuffer(void* buf, size_t& size);
+    bool GetIdentity(std::string& identity);
 
     bool SetServiceName(const std::string& name);
     bool SetFromAddress(const std::string& address);
@@ -63,15 +65,21 @@ namespace ZmqDialog {
     bool SetMessageType(uint32_t msgType);
     bool SetMessageBody(const std::string& body);
     bool SetMessageBuffer(void* buf, size_t size);
+    bool SetIdentity(const std::string &identity);
   
-    message_array_t* GetMessageArray()           { return (message_array_t*)this;          }
+    message_array_t* GetMessageArray()           { return (message_array_t*)this;          }    
     bool             Recv(zmq::socket_t* socket) { return GetMessageArray()->Recv(socket); }
     bool             Send(zmq::socket_t* socket) { return GetMessageArray()->Send(socket); }
+    void             PrintMessage(FILE* out);
   };
 
   const uint32_t EMPTY_MESSAGE               = 0;
   const uint32_t PUBLISH_TEXT_MESSAGE        = 1;
   const uint32_t PUBLISH_BINARY_MESSAGE      = 2;
+  const uint32_t SUBSCRIBE_TO_SERVICE        = 3;
+  const uint32_t REGISTER_PUBLISHER          = 4;
+  const uint32_t SUCCESS                     = 5;  
+
 
 }
 

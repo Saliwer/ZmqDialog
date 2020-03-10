@@ -3,7 +3,8 @@
 make
 
 INCLUDES="-I. -I./include -I/usr/include"
-LIBS="-lzmq -L./lib -lZmqDlg -lreadline"
+LIBS="-L. -L./lib64/ruby -L./lib -lZmqDlg -lreadline -lzmq"
 
-g++ -std=c++11 -o server DlgServer.cpp $INCLUDES $LIBS
-
+g++ -g -std=c++11 -o server DlgServer.cpp $INCLUDES $LIBS
+g++ -g -std=c++11 -o publisher DlgPublisher.cpp $INCLUDES $LIBS
+g++ -g -std=c++11 -o subscriber DlgSubscriber.cpp $INCLUDES $LIBS

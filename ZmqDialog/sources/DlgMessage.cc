@@ -8,6 +8,8 @@
 #include "ZmqDialog.h"
 #include "DlgMessage.h"
 #include "Debug.h"
+#include "Exception.h"
+
 
 namespace ZmqDialog
 {
@@ -52,7 +54,22 @@ namespace ZmqDialog
     if(idx >= 0 && idx < (int)m_data.size())
       m_data[idx] = s;
     else // negative index or next to last
-      m_data.push_back(s);
+      {
+	try
+	  {
+	    m_data.push_back(s);
+	  }
+	catch(std::exception& e)
+	  {
+	    Print(DBG_LEVEL_ERROR, "message_array_t::Update(): std::exception %s\n", e.what());
+	    throw Exception("message_array_t::Update(): fatal error.\n");
+	  }
+	catch(...)
+	  {
+	    Print(DBG_LEVEL_ERROR, "message_array_t::Update(): Something went wrong with m_data.push_back().\n");
+	    throw Exception("message_array_t::Update(): fatal error.\n");
+	  } 
+      }
     return true;
   }
 
@@ -124,29 +141,37 @@ namespace ZmqDialog
     if(!socket)
       return false;
     Clear();
-    while(!IS_INTERRUPTED)
+
+    int socketID;
+    size_t size = sizeof(socketID);
+    
+    socket->getsockopt(ZMQ_TYPE, &socketID, &size);
+    if (socketID == ZMQ_ROUTER)
       {
-	zmq::message_t message(0);
-	try
+	zmq::message_t identity;
+	if (!socket->recv(&identity))
 	  {
-	    if (!socket->recv(&message, 0))
-	      {
-		return false;
-	      }
+	    Print(DBG_LEVEL_ERROR, "DlgMessage::Recv(): couldn't recieve identity\n");
+    	    return false;
 	  }
-	catch(zmq::error_t error)
-	  {
-	    Print(DBG_LEVEL_ERROR,"Recv: message receiving error: %s\n", error.what());
-	    return false;
-	  }
-	byte_array_t frame(message.size());
-	memcpy(frame.data(),message.data(),message.size());
-	m_data.push_back(frame);
-	if(!message.more())
-	  {
-	    break;
-	  }
-      }
+	m_identity.reserve(identity.size());
+	for(size_t i = 0; i < identity.size(); ++i)
+	  m_identity.push_back(*((uint8_t*)identity.data()+i));
+      }   
+    zmq::message_t message;
+    do
+      {	
+    	if(!socket->recv(&message))
+    	  {
+    	    Print(DBG_LEVEL_ERROR, "DlgMessage::Recv(): Something went wrong with recv message\n");
+    	    return false;
+    	  }
+
+    	byte_array_t frame(message.size());
+    	memcpy(frame.data(),message.data(),message.size());
+    	m_data.push_back(frame);
+      } while(message.more());
+
     return true;
   }
  
@@ -155,8 +180,24 @@ namespace ZmqDialog
     if(!socket)
       return false;
     bool is_error = false;
+
+    int socketID;
+    size_t size = sizeof(socketID);  
+    socket->getsockopt(ZMQ_TYPE, &socketID, &size);
+    
     try
       {
+	if(socketID == ZMQ_ROUTER)
+	  {
+	    if (m_identity.size() == 0)
+	      {
+		Print(DBG_LEVEL_ERROR, "DlgMessage::Send(): Couldn't send message from router, identity is undefined.\n");
+		return false;
+	      }	
+	    zmq::message_t message(m_identity.data(), m_identity.size());
+	    socket->send(message, ZMQ_SNDMORE);
+	    
+	  }
 	for(size_t i = 0; i < m_data.size(); i++)
 	  {
 	    zmq::message_t message(m_data[i].data(),m_data[i].size());
@@ -173,15 +214,7 @@ namespace ZmqDialog
 
   ////////////////////////// class DlgMessage ///////////////////////////
 
-  DlgMessage::DlgMessage() : message_array_t()
-  {
-    PushBack(""); // service name
-    PushBack(""); // from address
-    PushBack(""); // to address
-    uint32_t msgType = EMPTY_MESSAGE;
-    PushBack(&msgType,sizeof(msgType));
-    PushBack(""); // empty body
-  }
+
 
   DlgMessage::DlgMessage(const std::string& name, const std::string& from, const std::string& to, 
 			 uint32_t msgType, const std::string& body) : message_array_t()
@@ -193,6 +226,16 @@ namespace ZmqDialog
     PushBack(body.c_str());
   }
 
+  DlgMessage::DlgMessage() : message_array_t() 
+  {
+    PushBack(""); // service name
+    PushBack(""); // from address
+    PushBack(""); // to address
+    uint32_t msgType = EMPTY_MESSAGE;
+    PushBack(&msgType,sizeof(msgType));
+    PushBack(""); // empty body
+  }
+
   DlgMessage::~DlgMessage()
   {
   }
@@ -201,15 +244,25 @@ namespace ZmqDialog
   {
     const int idx = 0;
     if(GetMessageArray()->GetNParts() < N_FIELDS || m_data[idx].size() < sizeof(uint32_t))
-      return false;
+      {
+	Print(DBG_LEVEL_ERROR,"DlgMessage::GetServiceName(): Something wrong with size\n");
+	return false;
+      }
     uint32_t s = *(uint32_t*)m_data[idx].data();
     if(s != m_data[idx].size()-sizeof(uint32_t))
-      return false;
+      {
+	Print(DBG_LEVEL_ERROR,"DlgMessage::GetServiceName(): Something wrong with size_2\n");
+	Print(DBG_LEVEL_ERROR,"DlgMessage::GetServiceName(): s(%d)!= arg(%d)\n", s, m_data[idx].size()-sizeof(uint32_t));
+	return false;
+      }
     if(s != 0)
       {
 	name = (char*)m_data[idx].data()+sizeof(uint32_t);
 	if(name.size()+1 != s)
-	  return false;
+	  {
+	    Print(DBG_LEVEL_ERROR,"DlgMessage::GetServiceName(): Something wrong with size_3\n");
+	    return false;
+	  }
       }
     else
       name = "";
@@ -285,26 +338,37 @@ namespace ZmqDialog
     return true;
   }
 
-  bool DlgMessage::GetMessageBuffer(void* buf, size_t& size)
-  {
+  bool DlgMessage::GetMessageBuffer(void*buf, size_t& size)
+  {    
     const int idx = 4;
     if(GetMessageArray()->GetNParts() < N_FIELDS || m_data[idx].size() < sizeof(uint32_t))
-      return false;
+      {
+	Print(DBG_LEVEL_ERROR, "DlgMessage::GetMessageBuffer(): first case.\n");
+	return false;
+      }
     uint32_t s = *(uint32_t*)m_data[idx].data();
     if(s != m_data[idx].size()-sizeof(uint32_t))
-      return false;
-    if(size == 0)
       {
-	size = s;
-	return true;
+	Print(DBG_LEVEL_ERROR, "DlgMessage::GetMessageBuffer(): s != m_data.size() case.\n");
+	return false;
+      }
+    if(size == 0)
+      { 
+    	size = s;
+    	return true;
       }
     if(s > size)
       {
-	size = s;
-	return false;
+	Print(DBG_LEVEL_ERROR, "DlgMessage::GetMessageBuffer(): s > size case.\n");
+    	size = s;
+    	return false;
       }
+    
     if(!buf)
-      return false;
+      {  
+	Print(DBG_LEVEL_ERROR, "DlgMessage::GetMessageBuffer(): !buf case.\n");
+    	return false;
+      }
     if(s != 0)
       {
 	memcpy(buf,(char*)m_data[idx].data()+sizeof(uint32_t),s);
@@ -313,6 +377,18 @@ namespace ZmqDialog
     return true;
   }
 
+  bool DlgMessage::GetIdentity(std::string& identity)
+  {  
+    identity = (char*)m_identity.data();
+    return true;
+  }
+
+  bool DlgMessage::SetIdentity(const std::string &identity)
+  {
+    m_identity.resize(identity.size()+1);
+    memcpy(m_identity.data(), identity.data(), identity.size()+1);
+    return true;
+  }
 
   bool DlgMessage::SetServiceName(const std::string& name)
   {
@@ -342,6 +418,79 @@ namespace ZmqDialog
   bool DlgMessage::SetMessageBuffer(void* buf, size_t size)
   {
     return GetMessageArray()->Update(4,buf,size);
+  }
+
+  void DlgMessage::PrintMessage(FILE* out)
+  {
+    std::string str;
+    if(GetServiceName(str))
+      {
+	fprintf(out,"Service name: '%s'\n", str.c_str());
+      }
+    else
+      {
+	fprintf(out,"Cannot get service name.\n");
+	return;
+      }
+
+    if (GetFromAddress(str))
+      {
+	fprintf(out,"From address: '%s'\n", str.c_str());
+      }
+    else
+      {
+	fprintf(out,"Cannot get from address.\n");
+	return;	
+      }
+    
+    if (GetToAddress(str))
+      {
+	fprintf(out,"To address: '%s'\n", str.c_str());
+      }
+    else
+      {
+	fprintf(out,"Cannot get To address.\n");
+	return;	
+      }
+  
+    uint32_t msgType = 0;
+    if (GetMessageType(msgType))
+      {
+	fprintf(out,"Message type: '%d'\n", msgType);
+      }
+    else
+      {
+	fprintf(out,"Cannot get message type.\n");
+	return;		
+      }
+    
+    if (GetMessageBody(str))
+      {
+	fprintf(out,"Message body: '%s'\n", str.c_str());
+      }
+    else
+      {
+	fprintf(out,"Cannot get message body.\n");
+	return;	
+      }
+
+    if (GetIdentity(str))
+      {
+	fprintf(out, "Identity: '%s'\n", str.c_str());
+      }
+    
+    // void* buf = nullptr;
+    // size_t size = 0;
+    // if (GetMessageBuffer(buf, size))
+    //   {
+    // 	fprintf(out,"Message buffer size: %ld\n", size);	
+    //   }
+    // else
+    //   {
+    //   	fprintf(out,"Cannot get message buffer.\n");
+    // 	return;	
+    //   }
+
   }
 
 } // namespace ZmqDialog
