@@ -22,7 +22,7 @@ bool DlgPublisher::Register()
   char endpoint[256];
   try
     {
-      sprintf(endpoint, "tcp://192.168.100.13:%d", DLG_SERVER_TCP_PORT);
+      sprintf(endpoint, "tcp://192.168.0.112:%d", DLG_SERVER_TCP_PORT);
       m_socket->connect(endpoint);
     }
   catch(zmq::error_t& e)

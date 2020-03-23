@@ -92,7 +92,7 @@ namespace ZmqDialog
     
     char port[256];
     size_t size = sizeof(port);
-    m_socket->bind("tcp://192.168.100.13:0");
+    m_socket->bind("tcp://192.168.0.112:0");
     // if(errno != 0 && errno != 11) // the resource can be temporary unavailable
     //   {
     // 	throw Exception("aBroker: socket binding error %d (%s)\n", errno, strerror(errno));
@@ -409,7 +409,7 @@ namespace ZmqDialog
 	size_t sizeSocketID = sizeof(socketID);
 	m_router->getsockopt(ZMQ_TYPE, &socketID, &sizeSocketID);
 	char endpoint[256];
-	sprintf(endpoint,"tcp://192.168.100.13:%d",DLG_SERVER_TCP_PORT);
+    sprintf(endpoint,"tcp://192.168.0.112:%d",DLG_SERVER_TCP_PORT);
 	m_router->bind(endpoint);
 	size_t size = sizeof(endpoint);
 	m_router->getsockopt(ZMQ_LAST_ENDPOINT, &endpoint, &size);

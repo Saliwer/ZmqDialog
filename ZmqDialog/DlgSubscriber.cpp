@@ -29,7 +29,7 @@ void USAGE(int argc, char* argv[])
 
 
 static bool thread_run = false;
-const char *server_name = "192.168.100.13:55550";
+const char *server_name = "192.168.0.112:55550";
 
 void some_loop(void*);
 
