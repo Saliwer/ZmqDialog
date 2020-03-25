@@ -1,23 +1,8 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <unistd.h>
-#include <sys/time.h>
-
-#include <zmq.hpp>
-
 #include "DlgServer.h"
-#include "Debug.h"
-#include "Exception.h"
-#include "Config.h"
-#include "DlgMessage.h"
 
 namespace ZmqDialog
 {
-  using namespace std;
-  using namespace zmq;
 
-#define HEARTBEAT_INTERVAL 2500000 // usecs
-  
   int64_t current_time()
   {
     struct timeval tv;
@@ -85,6 +70,7 @@ namespace ZmqDialog
 
   aBroker::aBroker(const char* name)
   {
+  //  const char* server_address          ="192.168.0.112";
     m_name =          name; 
     m_isRunning =     false;
     m_thread =        new std::thread(&aBroker::broker_thread, this);
@@ -92,13 +78,19 @@ namespace ZmqDialog
     
     char port[256];
     size_t size = sizeof(port);
-    m_socket->bind("tcp://192.168.0.112:0");
+    char endpoint[256];
+    sprintf(endpoint,"tcp://%s:0", server_address); // bind to any port
+    m_socket->bind(endpoint);
     // if(errno != 0 && errno != 11) // the resource can be temporary unavailable
     //   {
     // 	throw Exception("aBroker: socket binding error %d (%s)\n", errno, strerror(errno));
     //   }
     m_socket->getsockopt(ZMQ_LAST_ENDPOINT, &port, &size);
-    m_port = std::string(port);
+    //the return value port has the follow format:
+    //port = "tcp://address:port"
+    //To skip "tcp://" part -> (port + 6)
+
+    m_port = std::string(port + 6);
 
     Print(DBG_LEVEL_DEBUG,"aBroker: is bound to endpoint '%s'\n", m_port.c_str());
   }
@@ -133,10 +125,9 @@ namespace ZmqDialog
 	  { static_cast<void*>(*m_socket), 0, ZMQ_POLLIN, 0 } 
 	};
 	
-	int64_t timeout = 1000;  //usec
 	
 	//recieve messages
-	zmq::poll(&items[0], 1, (long)timeout);
+    zmq::poll(&items[0], 1, (long)TIMEOUT_INTERVAL/1000);
 	if (items[0].revents & ZMQ_POLLIN)
 	  {
 	    DlgMessage* msg = new DlgMessage;
@@ -402,18 +393,19 @@ namespace ZmqDialog
 
   DlgServer::DlgServer() : m_router(nullptr), m_main_thread(nullptr)
   {
+  //  const char* server_address          ="192.168.0.112";
     try
       {
-	m_router  = ZMQ::Instance()->CreateSocket(ZMQ_ROUTER);
-	int socketID;
-	size_t sizeSocketID = sizeof(socketID);
-	m_router->getsockopt(ZMQ_TYPE, &socketID, &sizeSocketID);
-	char endpoint[256];
-    sprintf(endpoint,"tcp://192.168.0.112:%d",DLG_SERVER_TCP_PORT);
-	m_router->bind(endpoint);
-	size_t size = sizeof(endpoint);
-	m_router->getsockopt(ZMQ_LAST_ENDPOINT, &endpoint, &size);
-	Print(DBG_LEVEL_DEBUG, "The roter is bound with '%s'\n",endpoint);
+        m_router  = ZMQ::Instance()->CreateSocket(ZMQ_ROUTER);
+        int socketID;
+        size_t sizeSocketID = sizeof(socketID);
+        m_router->getsockopt(ZMQ_TYPE, &socketID, &sizeSocketID);
+        char endpoint[256];
+        sprintf(endpoint,"tcp://%s:%d",server_address, DLG_SERVER_TCP_PORT);
+        m_router->bind(endpoint);
+        size_t size = sizeof(endpoint);
+        m_router->getsockopt(ZMQ_LAST_ENDPOINT, &endpoint, &size);
+        Print(DBG_LEVEL_DEBUG, "The roter is bound with '%s'\n",endpoint);
       }
     catch(zmq::error_t& e)
       {
@@ -576,7 +568,7 @@ namespace ZmqDialog
     reply->SetIdentity(identity);
     if (!reply->Send(m_router))
       {
-	Print(DBG_LEVEL_ERROR,"DlgServer::register_publisher: couldn't send a reply.\n");
+    Print(DBG_LEVEL_ERROR,"DlgServer::subscribe_to_service: couldn't send a reply.\n");
 	delete reply;
     	return false;
       }

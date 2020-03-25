@@ -8,13 +8,13 @@
 
 #include <zmq.hpp>
 
-#include "DlgServer.h"
 #include "DlgPublisher.h"
 #include "Config.h"
 #include "Debug.h"
-#include "ZmqDialog.h"
 #include "DlgMessage.h"
 #include "Exception.h"
+
+#include "ZmqDialog.h"
 
 #include <ctime>
 
@@ -23,7 +23,6 @@
 
 
 using namespace ZmqDialog;
-
 void USAGE(int argc, char* argv[])
 {
   printf("%s <option>\n", argv[0]);
@@ -32,6 +31,10 @@ void USAGE(int argc, char* argv[])
   printf("    -v          - verbose mode\n");
   printf("    -s          - silent mode (minimum printout)\n");
 }
+
+
+//const char* server_address          ="192.168.0.112";
+
 
 int main(int argc, char* argv[])
 {
@@ -66,11 +69,22 @@ int main(int argc, char* argv[])
 
 
   DlgPublisher Publisher("Publisher #1", "SomeService");
-  if (!Publisher.Register())
+  char endpoint[256];
+  sprintf(endpoint, "%s:%d", server_address, DLG_SERVER_TCP_PORT);
+  if (!Publisher.Connect(endpoint))
     {
-      Print(DBG_LEVEL_ERROR,"Couldn't register publisher.\n");
+      Print(DBG_LEVEL_ERROR,
+            "Couldn't connect to %s server.\n",
+            endpoint);
+      return 1;
     }
 
+  if (!Publisher.Register())
+  {
+      Print(DBG_LEVEL_ERROR,
+            "Couldn't register publisher.\n");
+      return 2;
+  }
   
   char* line = NULL;
 

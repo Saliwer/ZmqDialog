@@ -12,25 +12,53 @@
 #include "DlgMessage.h"
 #include "Exception.h"
 
-using namespace ZmqDialog;
-#define TIMEOUT_INTERVAL 2500000
 
 ////**********************************************************////
 ////                  DlgPublisher class                      ////
 ////**********************************************************////
+namespace ZmqDialog
+{
 
 class DlgPublisher
 {
   std::string      m_name;
   std::string      m_service;
+  std::string      m_server;
   zmq::socket_t*   m_socket;
-  
+  std::mutex       m_mutex;
+  bool             m_isRunning;
+  std::thread*     m_thread;
+
+
 public:
+  DlgPublisher(const std::string &name);
   DlgPublisher(const std::string &name, const std::string &service);
+  DlgPublisher(const std::string &name, const std::string &service,
+               const std::string &serverName);
   virtual ~DlgPublisher();
-  
-  bool Register();
+
+  bool SetServerName(const std::string &serverName);
+
+  bool Connect();
+  bool Connect(const std::string &serverName);
+  bool Connect(const char* serverName);
+  bool ReConnect(const std::string &serverName);
+
   bool PublishMessage(DlgMessage *msg);
 
+  bool Register();
+  bool ReRegister(const std::string &serviceName);
+
+  bool IsConnected(){ return m_socket; }
+private:
+  bool connect_to(const char* serverName);
+  void close_connection();
+  void publisher_thread();
+
+  //Parsing received messages
+  bool register_publisher(DlgMessage *msg);
 };
+
+}//end of namespace ZmqDialog
+
 #endif

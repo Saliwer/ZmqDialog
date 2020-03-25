@@ -5,7 +5,6 @@
 
 #include <zmq.hpp>
 
-#include "ZmqDialog.h"
 #include "DlgMessage.h"
 #include "Debug.h"
 #include "Exception.h"

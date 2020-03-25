@@ -16,12 +16,13 @@
 
 #include <ctime>
 
-using namespace ZmqDialog;
 
 
 ////**********************************************************////
 ////                 DlgSubscriber class                      ////
 ////**********************************************************////
+namespace ZmqDialog
+{
 
 class DlgSubscriber
 {
@@ -40,28 +41,34 @@ public:
 
   DlgSubscriber(const std::string &name);
   DlgSubscriber(const std::string &name, const std::string &serviceName);
-  DlgSubscriber(const std::string &name, const std::string &serviceName, 
-		const std::string &serverName);
+  DlgSubscriber(const std::string &name, const std::string &serviceName,
+        const std::string &serverName);
 
   virtual ~DlgSubscriber();
 
+  bool SetServerName(const std::string &serverName);
+
+  bool SetServiceName(const std::string &serviceName);
+
   bool Connect();
   bool Connect(const std::string &serverName);
+  bool Connect(const char* serverName);
+  bool ReConnect(const std::string &serverName);
 
   bool IsConnected() { return m_socket; }
 
   bool Subscribe();
   bool Subscribe(const std::string &serviceName);
+  bool Subscribe(const char* serviceName);
   bool ReSubscribe(const std::string &serviceName);
 
-  
-
   bool HasData() { return !m_messages.empty(); }
-  bool GetMessage(DlgMessage *& msg); 
+
+  bool ExtractMessage(DlgMessage *& msg);
 
 private:
   void subscriber_thread();
- 
+
   bool connect_to(const char* name);
   void close_connection();
 
@@ -69,5 +76,8 @@ private:
   bool publish_text_message(DlgMessage *msg);
   bool publish_binary_message(DlgMessage *msg);
 };
+
+}//end of namespace ZmqDialog
+
 
 #endif

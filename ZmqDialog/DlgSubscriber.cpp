@@ -7,17 +7,17 @@
 
 #include <zmq.hpp>
 
-#include "DlgServer.h"
 #include "DlgSubscriber.h"
 #include "Config.h"
 #include "Debug.h"
-#include "ZmqDialog.h"
 #include "DlgMessage.h"
 #include "Exception.h"
 
+#include "ZmqDialog.h"
+
 #include <ctime>
 
-
+using namespace ZmqDialog;
 void USAGE(int argc, char* argv[])
 {
   printf("%s <option>\n", argv[0]);
@@ -29,7 +29,7 @@ void USAGE(int argc, char* argv[])
 
 
 static bool thread_run = false;
-const char *server_name = "192.168.0.112:55550";
+
 
 void some_loop(void*);
 
@@ -68,13 +68,17 @@ int main(int argc, char* argv[])
   Print(DBG_LEVEL_DEBUG, "Dlg Subscriber is starting with option '%s'...\n",argv[1]);
 
   DlgSubscriber tempSub("Subscriber #1", "SomeService");
-  if (!tempSub.Connect(server_name))
+  char endpoint[256];
+  sprintf(endpoint, "%s:%d", server_address, DLG_SERVER_TCP_PORT);
+  if (!tempSub.Connect(endpoint))
     {
       Print(DBG_LEVEL_ERROR,"Couldn't connect to server.\n");
+      return 1;
     }
   if (!tempSub.Subscribe())
     {
       Print(DBG_LEVEL_ERROR,"Couldn't subscribe to server.\n");
+      return 2;
     }
   thread_run = true;
 
@@ -106,9 +110,9 @@ void some_loop(void *param)
       if (sub->HasData())
 	{
 	  DlgMessage *msg = nullptr;
-	  if (!sub->GetMessage(msg))
+      if (!sub->ExtractMessage(msg))
 	    {
-	      Print(DBG_LEVEL_DEBUG, "Couldn't get message from subscriber\n");
+          Print(DBG_LEVEL_DEBUG, "Couldn't extract message from subscriber\n");
 	      continue;
 	    }
 

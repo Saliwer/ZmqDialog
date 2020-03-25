@@ -9,10 +9,17 @@
 #include <mutex>
 
 #include <zmq.hpp>
+#include <unistd.h>
+#include <sys/time.h>
+
+#include "Debug.h"
+#include "Exception.h"
+#include "Config.h"
+#include "DlgMessage.h"
 
 namespace ZmqDialog
 {
-
+   extern const char* server_address;
 
   ////**********************************************************////
   ////                        ZMQ class                         ////

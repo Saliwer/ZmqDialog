@@ -3,9 +3,8 @@
 
 namespace ZmqDialog
 {
-
+   const char* server_address          ="192.168.0.112";
    volatile bool IS_INTERRUPTED;
-
 };
 
 #endif //__ZMQ_DIALOG_H__
