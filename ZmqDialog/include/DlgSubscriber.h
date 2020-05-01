@@ -67,14 +67,17 @@ public:
   bool ExtractMessage(DlgMessage *& msg);
 
 private:
+
   void subscriber_thread();
 
   bool connect_to(const char* name);
   void close_connection();
 
+  bool send_message(DlgMessage* msg, const std::string &identity);
   bool subscribe_to_service(DlgMessage *msg);
   bool publish_text_message(DlgMessage *msg);
   bool publish_binary_message(DlgMessage *msg);
+
 };
 
 }//end of namespace ZmqDialog

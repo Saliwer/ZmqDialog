@@ -31,6 +31,7 @@ class DlgPublisher
 
 
 public:
+
   DlgPublisher(const std::string &name);
   DlgPublisher(const std::string &name, const std::string &service);
   DlgPublisher(const std::string &name, const std::string &service,
@@ -55,6 +56,7 @@ private:
   void close_connection();
   void publisher_thread();
 
+  bool send_message(DlgMessage *msg, const std::string &identity);
   //Parsing received messages
   bool register_publisher(DlgMessage *msg);
 };

@@ -25,11 +25,11 @@
 using namespace ZmqDialog;
 void USAGE(int argc, char* argv[])
 {
-  printf("%s <option>\n", argv[0]);
-  printf("    where possible option(s) are:\n");
-  printf("    -d          - debug mode (all printouts)\n");
-  printf("    -v          - verbose mode\n");
-  printf("    -s          - silent mode (minimum printout)\n");
+    printf("%s <option>\n", argv[0]);
+    printf("    where possible option(s) are:\n");
+    printf("    -d          - debug mode (all printouts)\n");
+    printf("    -v          - verbose mode\n");
+    printf("    -s          - silent mode (minimum printout)\n");
 }
 
 
@@ -38,97 +38,98 @@ void USAGE(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
-  DLG_DEBUG_LEVEL = DBG_LEVEL_DEFAULT;
-  if(argc != 2)
+    DLG_DEBUG_LEVEL = DBG_LEVEL_DEFAULT;
+    if(argc != 2)
     {
-      USAGE(argc,argv);
-      return 1;
+        USAGE(argc,argv);
+        return 1;
     }
-  int c = 0;
+    int c = 0;
 
-  while((c = getopt(argc,argv,"vsd")) != -1)
+    while((c = getopt(argc,argv,"vsd")) != -1)
     {
-      switch (c)
-	{
-	case 'v':
-	  DLG_DEBUG_LEVEL = DBG_LEVEL_VERBOSE;
-	  break;
-	case 's':
-	  DLG_DEBUG_LEVEL = DBG_LEVEL_ERROR;
-	  break;
-	case 'd':
-	  DLG_DEBUG_LEVEL = DBG_LEVEL_DEBUG;
-	  break;	  
-	default:
-	  fprintf(stderr,"Unknown option '-%c'.\n", optopt);
-	case '?':
-	  USAGE(argc,argv);
-	  return 1;
-	}
-    }  
-
-
-  DlgPublisher Publisher("Publisher #1", "SomeService");
-  char endpoint[256];
-  sprintf(endpoint, "%s:%d", server_address, DLG_SERVER_TCP_PORT);
-  if (!Publisher.Connect(endpoint))
-    {
-      Print(DBG_LEVEL_ERROR,
-            "Couldn't connect to %s server.\n",
-            endpoint);
-      return 1;
+        switch (c)
+        {
+        case 'v':
+            DLG_DEBUG_LEVEL = DBG_LEVEL_VERBOSE;
+            break;
+        case 's':
+            DLG_DEBUG_LEVEL = DBG_LEVEL_ERROR;
+            break;
+        case 'd':
+            DLG_DEBUG_LEVEL = DBG_LEVEL_DEBUG;
+            break;
+        default:
+            fprintf(stderr,"Unknown option '-%c'.\n", optopt);
+        case '?':
+            USAGE(argc,argv);
+            return 1;
+        }
     }
 
-  if (!Publisher.Register())
-  {
-      Print(DBG_LEVEL_ERROR,
-            "Couldn't register publisher.\n");
-      return 2;
-  }
-  
-  char* line = NULL;
 
-  
-  while((line = readline("Publisher> ")) != NULL)
+    DlgPublisher Publisher("Publisher #1", "SomeService");
+    char endpoint[256];
+    sprintf(endpoint, "%s:%d", server_address, DLG_SERVER_TCP_PORT);
+    if (!Publisher.Connect(endpoint))
     {
-      if(strncmp(line,"exit",4) == 0 || strncmp(line,"quit",4) == 0)
-	{
-	  Print(DBG_LEVEL_DEBUG,"Command \'%s\' is received.\n",line);
-	  break;
-	}
-      if (strncmp(line, "publish", 7) == 0)
-	{
-	  for(size_t i = 0; i < 1000; ++i)
-	    {
-	      DlgMessage msg;
-	      if (!msg.SetMessageType(PUBLISH_BINARY_MESSAGE))
-		{
-		  Print(DBG_LEVEL_ERROR,"Couldn't set message type.\n");
-		  continue;
-		}
-	      timeval current_time;
-	      if (gettimeofday(&current_time, NULL) != 0)
-		{
-		  Print(DBG_LEVEL_DEBUG, "Get time of day error\n");
-		  continue;
-		}
-	      	
-	      if (!msg.SetMessageBuffer(&current_time, sizeof(current_time)))
-		{
-		  Print(DBG_LEVEL_ERROR,"Couldn't set message body.\n");
-		  continue;
-		}
-	      if (!Publisher.PublishMessage(&msg))
-		{
-		  Print(DBG_LEVEL_ERROR,"Couldn't publish message.\n");
-		  continue;
-		}
-	       usleep(1000);
-	    }	  
-	}
-      free(line);
+        Print(DBG_LEVEL_ERROR,
+              "Couldn't connect to %s server.\n",
+              endpoint);
+        return 1;
     }
-  
-  Print(DBG_LEVEL_DEBUG,"End of program.\n");  
-  return 0;
+
+    if (!Publisher.Register())
+    {
+        Print(DBG_LEVEL_ERROR,
+              "Couldn't register publisher.\n");
+        return 2;
+    }
+
+    char* line = NULL;
+
+
+    while((line = readline("Publisher> ")) != NULL)
+    {
+        if(strncmp(line,"exit",4) == 0 || strncmp(line,"quit",4) == 0)
+        {
+            Print(DBG_LEVEL_DEBUG,"Command \'%s\' is received.\n",line);
+            break;
+        }
+        if (strncmp(line, "publish", 7) == 0)
+        {
+            for(size_t i = 0; i < 1000; ++i)
+            {
+                DlgMessage msg;
+                if (!msg.SetMessageType(PUBLISH_BINARY_MESSAGE))
+                {
+                    Print(DBG_LEVEL_ERROR,"Couldn't set message type.\n");
+                    continue;
+                }
+                timeval current_time;
+                if (gettimeofday(&current_time, NULL) != 0)
+                {
+                    Print(DBG_LEVEL_DEBUG, "Get time of day error\n");
+                    continue;
+                }
+
+                if (!msg.SetMessageBuffer(&current_time, sizeof(current_time)))
+                {
+                    Print(DBG_LEVEL_ERROR,"Couldn't set message body.\n");
+                    continue;
+                }
+                if (!Publisher.PublishMessage(&msg))
+                {
+                    Print(DBG_LEVEL_ERROR,"Couldn't publish message.\n");
+                    continue;
+                }
+                usleep(1000);
+            }
+        }
+        Print(DBG_LEVEL_DEBUG, "Command '%s' was received\n", line);
+        free(line);
+    }
+
+    Print(DBG_LEVEL_DEBUG,"End of program.\n");
+    return 0;
 }

@@ -7,16 +7,29 @@
 
 #include <vector>
 #include <string>
+#include <map>
 
 namespace ZmqDialog {
 
-  class message_array_t
-  {
-  protected:
+enum MessageType
+{
+    EMPTY_MESSAGE = 0,
+    PUBLISH_TEXT_MESSAGE,
+    PUBLISH_BINARY_MESSAGE,
+    SUBSCRIBE_TO_SERVICE,
+    REGISTER_PUBLISHER,
+    HEARTBEAT_PING,
+    HEARTBEAT_PONG
+};
+
+
+class message_array_t
+{
+protected:
     typedef std::vector<uint8_t> byte_array_t;
     std::vector<byte_array_t> m_data;
-    std::vector<uint8_t> m_identity; 
-  public:
+    std::vector<uint8_t> m_identity;
+public:
     message_array_t() {};
     message_array_t(const char* str);
     message_array_t(const message_array_t& msg);
@@ -40,21 +53,23 @@ namespace ZmqDialog {
 
     bool Recv(zmq::socket_t* socket);
     bool Send(zmq::socket_t* socket);
-  };
+};
 
-  class DlgMessage : protected message_array_t
-  {
+class DlgMessage : protected message_array_t
+{
     const size_t N_FIELDS = 5;
-  public:
+    MessageType _type;
+public:
     DlgMessage();
-    DlgMessage(const std::string& name, const std::string& from, const std::string& to, 
-	       uint32_t msgType, const std::string& body);
+    DlgMessage(const std::string& name, const std::string& from, const std::string& to,
+               MessageType msgType, const std::string& body);
     virtual ~DlgMessage();
-  
+
+
     bool GetServiceName(std::string& name);
     bool GetFromAddress(std::string& address);
     bool GetToAddress(std::string& address);
-    bool GetMessageType(uint32_t& msgType);
+    bool GetMessageType(MessageType& msgType);
     bool GetMessageBody(std::string& body);
     bool GetMessageBuffer(void* buf, size_t& size);
     bool GetIdentity(std::string& identity);
@@ -62,23 +77,17 @@ namespace ZmqDialog {
     bool SetServiceName(const std::string& name);
     bool SetFromAddress(const std::string& address);
     bool SetToAddress(const std::string& address);
-    bool SetMessageType(uint32_t msgType);
+    bool SetMessageType(MessageType msgType);
     bool SetMessageBody(const std::string& body);
     bool SetMessageBuffer(void* buf, size_t size);
     bool SetIdentity(const std::string &identity);
-  
-    message_array_t* GetMessageArray()           { return (message_array_t*)this;          }    
+
+    message_array_t* GetMessageArray()           { return (message_array_t*)this;          }
     bool             Recv(zmq::socket_t* socket) { return GetMessageArray()->Recv(socket); }
     bool             Send(zmq::socket_t* socket) { return GetMessageArray()->Send(socket); }
     void             PrintMessage(FILE* out);
-  };
+};
 
-  const uint32_t EMPTY_MESSAGE               = 0;
-  const uint32_t PUBLISH_TEXT_MESSAGE        = 1;
-  const uint32_t PUBLISH_BINARY_MESSAGE      = 2;
-  const uint32_t SUBSCRIBE_TO_SERVICE        = 3;
-  const uint32_t REGISTER_PUBLISHER          = 4;
-  const uint32_t SUCCESS                     = 5;  
 
 
 }

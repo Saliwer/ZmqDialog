@@ -39,7 +39,7 @@ obj/%.o:          sources/%.cc sources/depend.mk
 
 clean:
 		@echo $(WD) "Cleaning ..."
-		@rm -f obj/*  sources/depend.mk ./*~ sources/*~ lib/* bin/* include/*~ projects/*~
+		@rm -f obj/*  sources/depend.mk ./*~ sources/*~ lib/* bin/* include/*~ projects/*~ ./publisher ./server ./subscriber
 
 -include depend.mk
 

@@ -20,7 +20,7 @@
 namespace ZmqDialog
 {
    extern const char* server_address;
-
+  int64_t current_time();
   ////**********************************************************////
   ////                        ZMQ class                         ////
   ////**********************************************************////
@@ -47,14 +47,13 @@ namespace ZmqDialog
   class aSubscriber
   {
     std::string             m_id;
-    int64_t                 m_expiry;    //  Expiries at unless heartbeat
   public:
   aSubscriber(const char* id, int64_t expiry = 0) : m_expiry(expiry)
     {
       m_id = id;
     }
-
     std::string GetID() const { return m_id; }
+    int64_t                 m_expiry;    //  Expiries at unless heartbeat
   };
 
 
@@ -65,13 +64,13 @@ namespace ZmqDialog
   class aPublisher
   {
     std::string             m_id;
-    int64_t                 m_expiry;    //  Expiries at unless heartbeat
   public:
   aPublisher(const char* id, int64_t expiry = 0) : m_expiry(expiry)
     {
       m_id = id;
     }
     std::string GetID() const { return m_id; }
+    int64_t                 m_expiry;    //  Expiries at unless heartbeat
   };
 
   ////**********************************************************////
@@ -117,9 +116,11 @@ namespace ZmqDialog
     bool AddSubscriber(const char *id);
     bool AddPublisher(const char *id);
     bool SendMessage(DlgMessage* msg, aSubscriber* s);
-    std::string GetPort() const { return m_port; };
+    bool SendMessage(DlgMessage *msg, const std::string &identity);
+    std::string GetPort() const { return m_port; }
   private:
     void broker_thread();
+    void purge_clients();
     void delete_publisher(const char* id);
     void destroy_publishers();  
     
@@ -127,6 +128,7 @@ namespace ZmqDialog
     bool publish_binary_message(DlgMessage *msg);
     bool subscribe_to_service(DlgMessage *msg);
     bool register_publisher(DlgMessage *msg);
+    bool heartbeat_message(DlgMessage *msg);
   };
 
 

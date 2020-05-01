@@ -106,40 +106,41 @@ void some_loop(void *param)
   Print(DBG_LEVEL_DEBUG, "Start of some_loop function\n");
   DlgSubscriber *sub = static_cast<DlgSubscriber*>(param);
   while(thread_run)
+  {
+    if (sub->HasData())
     {
-      if (sub->HasData())
-	{
-	  DlgMessage *msg = nullptr;
+      DlgMessage *msg = nullptr;
       if (!sub->ExtractMessage(msg))
-	    {
-          Print(DBG_LEVEL_DEBUG, "Couldn't extract message from subscriber\n");
-	      continue;
-	    }
+      {
+        Print(DBG_LEVEL_DEBUG, "Couldn't extract message from subscriber\n");
+        continue;
+      }
 
-	  timeval* receive_time = nullptr;
-	  void *buf = nullptr;
-	  size_t size = 0;
-	  if (msg->GetMessageBuffer(buf, size))
-	    {
-	      Print(DBG_LEVEL_DEBUG, "Binary message received with size %u.\n", size);
-	      buf = operator new(size);
-	      if (msg->GetMessageBuffer(buf, size))
-		{
-		  receive_time = static_cast<timeval*>(buf);
+      timeval* receive_time = nullptr;
+      void *buf = nullptr;
+      size_t size = 0;
+      if (msg->GetMessageBuffer(buf, size))
+      {
+        Print(DBG_LEVEL_DEBUG, "Binary message received with size %u.\n", size);
+        buf = operator new(size);
+        if (msg->GetMessageBuffer(buf, size))
+        {
+            receive_time = static_cast<timeval*>(buf);
 		}
-	      else
+        else
 		{
 		  Print(DBG_LEVEL_DEBUG, "Couldn't get binary data.\n");
 		  operator delete(buf);
 		  continue;
 		}
-	    }
+      }
 	  else
-	    {
-	      Print(DBG_LEVEL_DEBUG, "Couldn't get binary message.\n");
-	      continue;
-	    }
-	 timeval current_time;
+      {
+        Print(DBG_LEVEL_DEBUG, "Couldn't get binary message.\n");
+        continue;
+      }
+
+      timeval current_time;
 	  if (gettimeofday(&current_time, NULL) != 0)
 	    {
 	      Print(DBG_LEVEL_DEBUG, "Get time of day error\n");
@@ -151,6 +152,6 @@ void some_loop(void *param)
 	  Print(DBG_LEVEL_DEBUG,"Time elapsed: %lus   %luus\n", res.tv_sec, res.tv_usec);
 	  operator delete(buf);
 	}
-    } 
+  }
   Print(DBG_LEVEL_DEBUG, "End of some_loop function\n");
 }
